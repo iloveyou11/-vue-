@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name.a}}-{{message}}</p>
+            </div>
+        </div>
+        <p>{{name.b}}</p>
+        <p>{{message}}</p>
+    </div>
+</body>
+
+<script>
+    // 目标：处理层级属性、函数柯里化改良
+
+    // 用字符串路径访问对象成员，如通过obj.a.b拿到obj中a下的b属性
+    function getValueByPath(obj, path) {
+        let paths = path.split('.')
+        let res = obj
+        let attr
+        while (attr = obj.shift()) {
+            res = res[attr]
+        }
+        return res
+    }
+
+    // 函数柯里化改良：这样做的好处是，这个函数在Vue编译时就生成了
+    // function createGetValueByPath(path) {
+    //     let paths = path.split('.')
+    //     return function getValueByPath(obj) {
+    //         let res = obj
+    //         let attr
+    //         while (attr = obj.shift()) {
+    //             res = res[attr]
+    //         }
+    //         return res
+    //     }
+    // }
+
+    // 使用方法
+    // let getValueByPath = createGetValueByPath('a.b.c.d')
+    // getValueByPath(obj)
+
+
+    function compile(template, data) {
+        const reg = /\{\{(.+?)\}\}/g
+        const childNodes = template.childNodes
+        for (let i = 0; i < childNodes.length; i++) {
+            const node = childNodes[i];
+            const type = node.nodeType
+            if (type === 3) {
+                let text = childNodes[i].nodeValue
+                text = text.replace(reg, function(_, g) {
+                    let path = g.trim()
+
+                    // 注意：这里有改动
+                    return getValueByPath(data, path)
+                })
+                childNodes[i].nodeValue = text
+            } else if (type === 1) {
+                compile(childNodes[i], data)
+            }
+        }
+    }
+
+
+    class MyVue {
+        constructor(options) {
+            this._data = options.data
+            this._el = options.el
+
+            // 准备工作（准备模板）
+            this.$el = this._templateDOM = document.querySelector(this._el)
+            this._parent = this._templateDOM.parentNode
+
+            // 渲染工作
+            this.render()
+        }
+
+        // 渲染
+        render() {
+            this.compile()
+        }
+
+        // 编译
+        compile() {
+            let cloneTmpDOM = this._templateDOM.cloneNode(true)
+            compile(cloneTmpDOM, this._data)
+            this.update(cloneTmpDOM)
+        }
+
+        // 更新
+        update(tmp) {
+            this._parent.replaceChild(tmp, this.$el)
+        }
+    }
+
+    let vm = new MyVue({
+        el: '#root',
+        data: {
+            name: {
+                a: 'haha',
+                b: 'lala'
+            },
+            message: '大家好'
+        }
+    })
+</script>
+
+</html>

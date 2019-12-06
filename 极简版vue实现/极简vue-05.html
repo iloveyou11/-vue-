@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name.a}}-{{message}}</p>
+            </div>
+        </div>
+        <p>{{name.b}}</p>
+        <p>{{message}}</p>
+    </div>
+</body>
+
+<script>
+    // 目标：开始使用虚拟DOM
+
+    // 虚拟DOM类
+    class VNode {
+        constructor(tag, data, value, type) {
+            this.tag = tag && tag.toLowerCase()
+            this.data = data
+            this.value = value
+            this.type = type
+            this.children = []
+        }
+        appendChild(vnode) {
+            this.children.push(vnode)
+        }
+    }
+
+    // 真实DOM->虚拟DOM
+    function createVNode(node) {
+        let nodeType = node.nodeType
+        let _vnode = null
+        if (nodeType === 1) {
+            // 元素
+            let nodeName = node.nodeName
+            let attrs = node.attributes
+            let _attrObj = {}
+            for (let i = 0; i < attrs.length; i++) {
+                _attrObj[attrs[i].nodeName] = attrs[i].nodeValue
+            }
+            _vnode = new VNode(nodeName, _attrObj, undefined, nodeType)
+
+            //   考虑是否存在子元素,使用递归
+            let childNodes = node.childNodes
+            for (let i = 0; i < childNodes.length; i++) {
+                _vnode.appendChild(createVNode(childNodes[i]))
+            }
+        } else if (nodeType === 3) {
+            // 文本节点
+            _vnode = new VNode(undefined, undefined, node.nodeValue, nodeType)
+        }
+        return _vnode
+    }
+
+    // 虚拟DOM->真实DOM
+    function parseVNode(vnode) {
+        let type = vnode.type
+        let _node = null
+        if (type === 3) {
+            // 创建文本节点
+            return document.createTextNode(vnode.value)
+        } else if (type === 1) {
+            _node = document.createElement(vnode.tag)
+            let data = vnode.data
+            Object.keys(data).forEach(key => {
+                _node.setAttribute(key, data[key])
+            })
+            let children = vnode.children
+            children.forEach(child => {
+                _node.appendChild(parseVNode(child))
+            })
+        }
+        return _node
+    }
+
+    // 用字符串路径访问对象成员
+    function getValueByPath(obj, path) {
+        let paths = path.split('.')
+        let res = obj
+        let attr
+        while (attr = obj.shift()) {
+            res = res[attr]
+        }
+        return res
+    }
+
+    // 将真实DOM(含{{}})与数据结合
+    // function compile(template, data) {
+    //     const reg = /\{\{(.+?)\}\}/g
+    //     const childNodes = template.childNodes
+    //     for (let i = 0; i < childNodes.length; i++) {
+    //         const node = childNodes[i];
+    //         const type = node.nodeType
+    //         if (type === 3) {
+    //             let text = childNodes[i].nodeValue
+    //             text = text.replace(reg, function(_, g) {
+    //                 let path = g.trim()
+    //                 return getValueByPath(data, path)
+    //             })
+    //             childNodes[i].nodeValue = text
+    //         } else if (type === 1) {
+    //             compile(childNodes[i], data)
+    //         }
+    //     }
+    // }
+
+    // 将虚拟DOM(含{{}})与数据结合
+    function combine(vnode, data) {
+        let {
+            _type,
+            _data,
+            _tag,
+            _value,
+            _children
+        } = vnode
+        const reg = /\{\{(.+?)\}\}/g
+        let _vnode = null
+
+        if (_type === 3) {
+            // 对文本进行处理
+            _value = _value.replace(reg, function(_, g) {
+                let path = g.trim()
+                return getValueByPath(data, path)
+            })
+            _vnode = new VNode(_tag, _data, _value, _type)
+        } else if (_type === 1) {
+            _vnode = new VNode(_tag, _data, _value, _type)
+            _children.forEach(child => {
+                _vnode.appendChild(combine(child, data))
+            })
+        }
+        return _vnode
+    }
+
+    class MyVue {
+        constructor(options) {
+            this._data = options.data
+            this._el = options.el
+
+            // 准备工作（准备模板）
+            this.$el = this._templateDOM = document.querySelector(this._el)
+            this._parent = this._templateDOM.parentNode
+
+            // 渲染工作
+            this.mount()
+        }
+
+        mount() {
+            this.render = this.createRenderFn()
+            this.mountComponent()
+        }
+
+        mountComponent() {
+            let mount = () => {
+                this.update(this.render)
+            }
+            mount.call(this)
+        }
+
+        // 在真正的Vue中使用了二次提交的设计结构
+
+        // 生成render函数,目的是生成抽象语法树(我们使用虚拟dom来模拟)
+        createRenderFn() {
+            let ast = createVNode(this._templateDOM)
+            return function render() {
+                // Vue: 将AST + data -> VNode
+                // 这里:带{{}}的VNode -> 含有数据的VNode(简化)
+                return combine(ast, this._data)
+            }
+        }
+
+        // 将虚拟dom渲染到页面中,diff算法就在这里
+        update() {
+            // 简化,直接生成html DOM
+        }
+    }
+
+    let vm = new MyVue({
+        el: '#root',
+        data: {
+            name: {
+                a: 'haha',
+                b: 'lala'
+            },
+            message: '大家好'
+        }
+    })
+</script>
+
+</html>

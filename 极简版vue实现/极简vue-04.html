@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name.a}}-{{message}}</p>
+            </div>
+        </div>
+        <p>{{name.b}}</p>
+        <p>{{message}}</p>
+    </div>
+</body>
+
+<script>
+    // 目标：考虑虚拟DOM
+    // 使用虚拟DOM是为了提高性能
+    // 1 怎么将真实DOM转化为虚拟DOM
+    // 2 怎么将虚拟DOM转化为真实DOM
+
+    class VNode {
+        /**
+        tag:标签名
+        data:vue的data数据
+        value:文本值
+        type:节点类型
+         */
+        constructor(tag, data, value, type) {
+            this.tag = tag && tag.toLowerCase()
+            this.data = data
+            this.value = value
+            this.type = type
+            this.children = []
+        }
+        appendChild(vnode) {
+            this.children.push(vnode)
+        }
+    }
+
+    // 使用递归遍历真实DOM生成虚拟DOM
+    function createVNode(node) {
+        let nodeType = node.nodeType
+        let _vnode = null
+        if (nodeType === 1) {
+            // 元素
+            let nodeName = node.nodeName
+            let attrs = node.attributes
+            let _attrObj = {}
+            for (let i = 0; i < attrs.length; i++) {
+                _attrObj[attrs[i].nodeName] = attrs[i].nodeValue
+            }
+            _vnode = new VNode(nodeName, _attrObj, undefined, nodeType)
+
+            //   考虑是否存在子元素,使用递归
+            let childNodes = node.childNodes
+            for (let i = 0; i < childNodes.length; i++) {
+                _vnode.appendChild(createVNode(childNodes[i]))
+            }
+        } else if (nodeType === 3) {
+            // 文本节点
+            _vnode = new VNode(undefined, undefined, node.nodeValue, nodeType)
+        }
+        return _vnode
+    }
+
+    // 虚拟DOM转化为真实DOM
+    function parseVNode(vnode) {
+        let type = vnode.type
+        let _node = null
+        if (type === 3) {
+            // 创建文本节点
+            return document.createTextNode(vnode.value)
+        } else if (type === 1) {
+            _node = document.createElement(vnode.tag)
+            let data = vnode.data
+            Object.keys(data).forEach(key => {
+                _node.setAttribute(key, data[key])
+            })
+            let children = vnode.children
+            children.forEach(child => {
+                _node.appendChild(parseVNode(child))
+            })
+        }
+        return _node
+    }
+
+    // 用字符串路径访问对象成员
+    function getValueByPath(obj, path) {
+        let paths = path.split('.')
+        let res = obj
+        let attr
+        while (attr = obj.shift()) {
+            res = res[attr]
+        }
+        return res
+    }
+
+    function compile(template, data) {
+        const reg = /\{\{(.+?)\}\}/g
+        const childNodes = template.childNodes
+        for (let i = 0; i < childNodes.length; i++) {
+            const node = childNodes[i];
+            const type = node.nodeType
+            if (type === 3) {
+                let text = childNodes[i].nodeValue
+                text = text.replace(reg, function(_, g) {
+                    let path = g.trim()
+
+                    // 注意：这里有改动
+                    return getValueByPath(data, path)
+                })
+                childNodes[i].nodeValue = text
+            } else if (type === 1) {
+                compile(childNodes[i], data)
+            }
+        }
+    }
+
+
+    class MyVue {
+        constructor(options) {
+            this._data = options.data
+            this._el = options.el
+
+            // 准备工作（准备模板）
+            this.$el = this._templateDOM = document.querySelector(this._el)
+            this._parent = this._templateDOM.parentNode
+
+            // 渲染工作
+            this.render()
+        }
+
+        // 渲染
+        render() {
+            this.compile()
+        }
+
+        // 编译
+        compile() {
+            let cloneTmpDOM = this._templateDOM.cloneNode(true)
+            compile(cloneTmpDOM, this._data)
+            this.update(cloneTmpDOM)
+        }
+
+        // 更新
+        update(tmp) {
+            this._parent.replaceChild(tmp, this.$el)
+        }
+    }
+
+    let vm = new MyVue({
+        el: '#root',
+        data: {
+            name: {
+                a: 'haha',
+                b: 'lala'
+            },
+            message: '大家好'
+        }
+    })
+</script>
+
+</html>

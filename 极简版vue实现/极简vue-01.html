@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <div>
+            <div>
+                <p>{{name}}-{{message}}</p>
+            </div>
+        </div>
+        <p>{{name}}</p>
+        <p>{{message}}</p>
+    </div>
+</body>
+
+<!-- <script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script> -->
+
+<script>
+    // 目标：实现从数据驱动视图
+
+    // 步骤拆解
+    // 1、拿到模板
+    // 2、拿到数据（data）
+    // 3、将数据与模板结合，得到的是html元素 
+    // 4、放到页面中
+
+    // 1、拿到模板
+    let tmpNode = document.querySelector('#root')
+
+    // 2、拿到数据（data）
+    let data = {
+        name: '张三',
+        message: '大家好'
+    }
+
+    // 3、将数据与模板结合，得到的是html元素
+    // 一般都是使用递归
+    // 在这个案例中template是DOM元素
+    // 在真正的Vue源码中是DOM——字符串模板——VNode——真正的DOM
+    const reg = /\{\{(.+?)\}\}/g
+
+    function compile(template, data) {
+        let childNodes = template.childNodes
+        for (let i = 0; i < childNodes.length; i++) {
+            const node = childNodes[i];
+            const type = node.nodeType
+            if (type === 3) {
+                let text = childNodes[i].nodeValue
+                text = text.replace(reg, function(_, g) {
+                    return data[g.trim()]
+                })
+                childNodes[i].nodeValue = text
+            } else if (type === 1) {
+                compile(childNodes[i], data)
+            }
+        }
+    }
+
+    // 注意这里是要用拷贝的template DOM元素，因为DOM是引用类型，不要直接去修改它
+    let cloneTemplate = tmpNode.cloneNode(true)
+    console.log('编译前:', tmpNode);
+    compile(cloneTemplate, data)
+    console.log('编译后:', cloneTemplate);
+
+    // 4、放到页面中
+    root.parentNode.replaceChild(cloneTemplate, root)
+
+
+    // 目前是极简版本的Vue，存在很大的问题：
+    // 1、Vue使用的是虚拟DOM，而目前我们使用的仍然是真实的DOM
+    // 2、目前只考虑的单属性，而Vue中大量地使用层次属性，如{{name.first.a}}
+    // 3、代码还未整合
+    // ……
+</script>
+
+</html>
