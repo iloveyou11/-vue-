@@ -89,7 +89,7 @@
         let paths = path.split('.')
         let res = obj
         let attr
-        while (attr = obj.shift()) {
+        while (attr = paths.shift()) {
             res = res[attr]
         }
         return res
@@ -117,13 +117,12 @@
 
     // 将虚拟DOM(含{{}})与数据结合
     function combine(vnode, data) {
-        let {
-            _type,
-            _data,
-            _tag,
-            _value,
-            _children
-        } = vnode
+        let _type = vnode.type
+        let _data = vnode.data
+        let _tag = vnode.tag
+        let _value = vnode.value
+        let _children = vnode.children
+
         const reg = /\{\{(.+?)\}\}/g
         let _vnode = null
 
@@ -140,6 +139,7 @@
                 _vnode.appendChild(combine(child, data))
             })
         }
+        // console.log(_vnode);
         return _vnode
     }
 
@@ -162,8 +162,9 @@
         }
 
         mountComponent() {
+            // 之所以这样写，是因为接下来要使用发布-订阅模式，渲染和计算的行为应该交给watcher来完成
             let mount = () => {
-                this.update(this.render)
+                this.update(this.render())
             }
             mount.call(this)
         }
@@ -181,8 +182,10 @@
         }
 
         // 将虚拟dom渲染到页面中,diff算法就在这里
-        update() {
+        update(vnode) {
             // 简化,直接生成html DOM
+            let realDOM = parseVNode(vnode)
+            this._parent.replaceChild(realDOM, document.querySelector('#root'))
         }
     }
 
