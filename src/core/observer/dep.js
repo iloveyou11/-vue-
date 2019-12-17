@@ -1,7 +1,9 @@
 /* @flow */
 
 import type Watcher from './watcher'
-import { remove } from '../util/index'
+import {
+    remove
+} from '../util/index'
 import config from '../config'
 
 let uid = 0
@@ -11,42 +13,43 @@ let uid = 0
  * directives subscribing to it.
  */
 export default class Dep {
-  static target: ?Watcher;
-  id: number;
-  subs: Array<Watcher>;
+    static target: ? Watcher;
+    id: number;
+    subs: Array < Watcher > ;
 
-  constructor () {
-    this.id = uid++
-    this.subs = []
-  }
-
-  addSub (sub: Watcher) {
-    this.subs.push(sub)
-  }
-
-  removeSub (sub: Watcher) {
-    remove(this.subs, sub)
-  }
-
-  depend () {
-    if (Dep.target) {
-      Dep.target.addDep(this)
+    constructor() {
+        this.id = uid++
+            this.subs = []
     }
-  }
 
-  notify () {
-    // stabilize the subscriber list first
-    const subs = this.subs.slice()
-    if (process.env.NODE_ENV !== 'production' && !config.async) {
-      // subs aren't sorted in scheduler if not running async
-      // we need to sort them now to make sure they fire in correct
-      // order
-      subs.sort((a, b) => a.id - b.id)
+    addSub(sub: Watcher) {
+        this.subs.push(sub)
     }
-    for (let i = 0, l = subs.length; i < l; i++) {
-      subs[i].update()
+
+    removeSub(sub: Watcher) {
+        remove(this.subs, sub)
     }
-  }
+
+    depend() {
+        if (Dep.target) {
+            Dep.target.addDep(this)
+        }
+    }
+
+    // 每一个属性都会包含一个Dep实例，会记录下参与计算和渲染的watcher
+    notify() {
+        // stabilize the subscriber list first
+        const subs = this.subs.slice()
+        if (process.env.NODE_ENV !== 'production' && !config.async) {
+            // subs aren't sorted in scheduler if not running async
+            // we need to sort them now to make sure they fire in correct
+            // order
+            subs.sort((a, b) => a.id - b.id)
+        }
+        for (let i = 0, l = subs.length; i < l; i++) {
+            subs[i].update()
+        }
+    }
 }
 
 // The current target watcher being evaluated.
@@ -55,12 +58,12 @@ export default class Dep {
 Dep.target = null
 const targetStack = []
 
-export function pushTarget (target: ?Watcher) {
-  targetStack.push(target)
-  Dep.target = target
+export function pushTarget(target: ? Watcher) {
+    targetStack.push(target)
+    Dep.target = target
 }
 
-export function popTarget () {
-  targetStack.pop()
-  Dep.target = targetStack[targetStack.length - 1]
+export function popTarget() {
+    targetStack.pop()
+    Dep.target = targetStack[targetStack.length - 1]
 }
