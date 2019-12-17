@@ -34,12 +34,12 @@
         }
         Object.defineProperty(o, key, {
             configurable: true,
-            enumerable: enumerable,
+            enumerable: !!enumerable,
             get() {
                 return value
             },
             set(newVal) {
-                value = newVal
+                value = reactify(newVal)
 
                 // 目前已经将对象改为响应式了，但是目前要在直接给对象赋值就不是响应式的了，在这里应该进行相应处理
 
