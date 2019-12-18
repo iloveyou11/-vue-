@@ -132,20 +132,22 @@ export function cached(fn) {
     )
 }
 
-// 将连字符分隔的字符串转化为驼峰
+// 将连字符分隔的字符串转化为驼峰，如'i-love-you'--->'iLoveYou'
 const camelizeRE = /-(\w)/g
 export const camelize = cached(str => {
+    // _是完整匹配内容，如'-y',c是分组匹配内容，如'y'
     return str.replace(camelizeRE, (_, c) => c ? c.toUpperCase() : '')
 })
 
-// 首字母大写
+// 将首字母大写 'dfrf'--->'Dfrf'
 export const capitalize = cached(str => {
     return str.charAt(0).toUpperCase() + str.slice(1)
 })
 
+// 将驼峰形式转化为连字分隔符形式，如'iLoveYou'--->'i-love-you'
 const hyphenateRE = /\B([A-Z])/g
 export const hyphenate = cached(str => {
-    return str.replace(hyphenateRE, '-$1').toLowerCase()
+    return str.replace(hyphenateRE, (_, c) => c ? `-${c.toLowerCase()}` : '')
 })
 
 // 实现extend方法
@@ -219,4 +221,18 @@ export function once(fn) {
             fn.apply(this, arguments)
         }
     }
+}
+
+// 数组去重
+export function uniArr(arr) {
+    let _set = {}
+    arr.forEach(v => _set[v] || (_set[v] = true))
+    return Object.keys(_set)
+}
+
+// 数组去重
+export function uniArr(arr) {
+    let _set = {}
+    arr.forEach(v => _set[v] || (_set[v] = true))
+    return Object.keys(_set)
 }
